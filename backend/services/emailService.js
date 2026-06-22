@@ -10,13 +10,17 @@ const getTransporter = async () => {
 
   if (email && password) {
     transporter = nodemailer.createTransport({
-      service: 'gmail', // or configured host
+      // REMOVED: service: 'gmail',
+      // ADDED: Explicit host, port, and secure settings for Render
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: email,
         pass: password,
       },
     });
-    console.log('Nodemailer initialized with EMAIL_USER');
+    console.log('Nodemailer initialized with EMAIL_USER on secure port 465');
   } else {
     // Ethereal Mock Email for testing
     const testAccount = await nodemailer.createTestAccount();
@@ -41,7 +45,7 @@ const getTransporter = async () => {
 const sendBillEmail = async (toEmail, billNumber, pdfBuffer, userName = '') => {
   try {
     const tp = await getTransporter();
-    
+
     const mailOptions = {
       from: process.env.EMAIL_USER || process.env.SMTP_EMAIL || '"LuxeStore" <no-reply@store.com>',
       to: toEmail,
@@ -57,11 +61,11 @@ const sendBillEmail = async (toEmail, billNumber, pdfBuffer, userName = '') => {
     };
 
     const info = await tp.sendMail(mailOptions);
-    
+
     if (!process.env.EMAIL_USER && !process.env.SMTP_EMAIL) {
       console.log(`[MOCK EMAIL] Preview URL: %s`, nodemailer.getTestMessageUrl(info));
     }
-    
+
     return info;
   } catch (error) {
     console.error('Error sending email:', error);
@@ -75,10 +79,10 @@ const sendBillEmail = async (toEmail, billNumber, pdfBuffer, userName = '') => {
 const sendInquiryEmail = async (name, email, phone, message) => {
   try {
     const tp = await getTransporter();
-    
+
     // Send to the admin's own email (the one configured in env)
     const adminEmail = process.env.EMAIL_USER || process.env.SMTP_EMAIL;
-    
+
     if (!adminEmail) {
       console.warn("No EMAIL_USER configured. Inquiry will not be sent to real email.");
     }
@@ -92,11 +96,11 @@ const sendInquiryEmail = async (name, email, phone, message) => {
     };
 
     const info = await tp.sendMail(mailOptions);
-    
+
     if (!adminEmail) {
       console.log(`[MOCK INQUIRY EMAIL] Preview URL: %s`, nodemailer.getTestMessageUrl(info));
     }
-    
+
     return info;
   } catch (error) {
     console.error('Error sending inquiry email:', error);
@@ -109,7 +113,7 @@ const sendInquiryEmail = async (name, email, phone, message) => {
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
     const tp = await getTransporter();
-    
+
     const mailOptions = {
       from: process.env.EMAIL_USER || process.env.SMTP_EMAIL || '"LuxeStore" <no-reply@store.com>',
       to,
