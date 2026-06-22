@@ -13,12 +13,15 @@ const getTransporter = async () => {
       // REMOVED: service: 'gmail',
       // ADDED: Explicit host, port, and secure settings for Render
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: email,
         pass: password,
       },
+      tls: {
+        rejectUnauthorized: false // Helps prevent cloud certificate handshake timeouts
+      }
     });
     console.log('Nodemailer initialized with EMAIL_USER on secure port 465');
   } else {
