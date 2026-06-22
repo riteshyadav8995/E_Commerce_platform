@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  @apply bg-gray-50 text-gray-900 font-sans antialiased dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200;
+}
+
+@keyframes slide-left {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-left {
+  animation: slide-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

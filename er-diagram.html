@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Management System - ER Diagram</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f9fafb; color: #111827; }
+    h1 { font-size: 1.5rem; text-align: center; margin-bottom: 1rem; }
+    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    .mermaid { display: flex; justify-content: center; margin-bottom: 2rem; }
+    .btn { display: inline-block; padding: 0.5rem 1rem; background: #4f46e5; color: white; text-decoration: none; border-radius: 4px; text-align: center; font-weight: 500; cursor: pointer; border: none; }
+    .btn:hover { background: #4338ca; }
+    .actions { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>E-Commerce Management System - Final Database Schema</h1>
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem;">Includes Phase 1-6 features: Authentication, Products, Inventory, POS, WhatsApp Conversational Commerce.</p>
+    
+    <div class="mermaid" id="diagram">
+erDiagram
+    ROLE {
+        int id PK
+        string name UK
+    }
+    
+    USER {
+        int id PK
+        string name
+        string email UK
+        string passwordHash
+        int roleId FK
+        DateTime createdAt
+    }
+
+    CUSTOMER {
+        int id PK
+        string phone UK
+        string name
+        DateTime createdAt
+    }
+    
+    CATEGORY {
+        int id PK
+        string name UK
+        string description
+        string image
+        DateTime createdAt
+    }
+    
+    PRODUCT {
+        int id PK
+        string name
+        string sku UK
+        string barcode UK
+        string description
+        decimal price
+        decimal tax
+        string imageUrl
+        string status
+        int categoryId FK
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    
+    WAREHOUSE {
+        int id PK
+        string name
+        string location
+        DateTime createdAt
+    }
+    
+    INVENTORY {
+        int id PK
+        int productId FK
+        int warehouseId FK
+        int quantity
+        decimal purchasePrice
+        int minStockThreshold
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    
+    STOCKMOVEMENT {
+        int id PK
+        int productId FK
+        int warehouseId FK
+        string type
+        int quantity
+        string reference
+        DateTime createdAt
+    }
+    
+    STOCKTRANSACTION {
+        int id PK
+        int inventoryId FK
+        string type
+        int quantity
+        string reason
+        int userId FK
+        DateTime createdAt
+    }
+
+    CART {
+        int id PK
+        int customerId FK
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    CARTITEM {
+        int id PK
+        int cartId FK
+        int productId FK
+        int quantity
+    }
+
+    BILL {
+        int id PK
+        string billNumber UK
+        decimal totalAmount
+        decimal discount
+        decimal tax
+        decimal grandTotal
+        string status
+        string paymentMode
+        string paymentLinkId
+        string paymentStatus
+        string shippingStatus
+        string note
+        int userId FK
+        int customerId FK
+        DateTime createdAt
+    }
+
+    BILLITEM {
+        int id PK
+        int billId FK
+        int productId FK
+        int quantity
+        decimal unitPrice
+        decimal subtotal
+    }
+
+    ROLE ||--o{ USER : "has"
+    USER ||--o{ STOCKTRANSACTION : "records"
+    USER ||--o{ BILL : "generates"
+    
+    CUSTOMER ||--o{ CART : "owns"
+    CUSTOMER ||--o{ BILL : "pays"
+    
+    CATEGORY ||--o{ PRODUCT : "contains"
+    
+    PRODUCT ||--o{ INVENTORY : "stocked as"
+    PRODUCT ||--o{ STOCKMOVEMENT : "moves in"
+    PRODUCT ||--o{ BILLITEM : "sold as"
+    PRODUCT ||--o{ CARTITEM : "added to"
+    
+    WAREHOUSE ||--o{ INVENTORY : "stores"
+    WAREHOUSE ||--o{ STOCKMOVEMENT : "tracks"
+    
+    INVENTORY ||--o{ STOCKTRANSACTION : "undergoes"
+
+    CART ||--o{ CARTITEM : "contains"
+    
+    BILL ||--o{ BILLITEM : "contains"
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="downloadSVG()">Download Diagram (SVG)</button>
+    </div>
+  </div>
+
+  <script>
+    function downloadSVG() {
+      const svg = document.querySelector('.mermaid svg');
+      if (!svg) {
+        alert('Diagram is still rendering. Please wait a moment and try again.');
+        return;
+      }
+      
+      const serializer = new XMLSerializer();
+      const source = serializer.serializeToString(svg);
+      
+      // Add XML declaration
+      const sourceWithDecl = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+      
+      const blob = new Blob([sourceWithDecl], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "ecommerce_final_er_diagram.svg";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

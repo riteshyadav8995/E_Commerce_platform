@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  phone             String?
+  address           String?
+  roleId            Int
+  role              Role               @relation(fields: [roleId], references: [id])
+  createdAt         DateTime           @default(now())
+  stockTransactions StockTransaction[]
+  bills             Bill[]
+  deliveryBills     Bill[]             @relation("DeliveryBoyBills")
+  notifications     Notification[]
+}
+
+model Customer {
+  id             Int             @id @default(autoincrement())
+  phone          String          @unique
+  name           String?
+  createdAt      DateTime        @default(now())
+  carts          Cart[]
+  bills          Bill[]
+  abandonedCarts AbandonedCart[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  image       String?
+  createdAt   DateTime  @default(now())
+  products    Product[]
+}
+
+model Product {
+  id             Int             @id @default(autoincrement())
+  name           String
+  sku            String          @unique
+  barcode        String?         @unique
+  description    String?
+  price          Decimal         @db.Decimal(10, 2)
+  tax            Decimal         @default(0) @db.Decimal(5, 2)
+  imageUrl       String?
+  images         String[]        @default([])
+  status         String          @default("active")
+  categoryId     Int
+  category       Category        @relation(fields: [categoryId], references: [id])
+  inventories    Inventory[]
+  stockMovements StockMovement[]
+  billItems      BillItem[]
+  cartItems      CartItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Warehouse {
+  id             Int             @id @default(autoincrement())
+  name           String
+  location       String?
+  inventories    Inventory[]
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+}
+
+model Inventory {
+  id                Int                @id @default(autoincrement())
+  productId         Int
+  warehouseId       Int
+  quantity          Int                @default(0)
+  purchasePrice     Decimal            @default(0) @db.Decimal(10, 2)
+  minStockThreshold Int                @default(5)
+  product           Product            @relation(fields: [productId], references: [id])
+  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  transactions      StockTransaction[]
+
+  @@unique([productId, warehouseId])
+}
+
+model StockMovement {
+  id          Int       @id @default(autoincrement())
+  productId   Int
+  warehouseId Int
+  type        String // 'IN', 'OUT', 'TRANSFER', 'ADJUST'
+  quantity    Int
+  reference   String?
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model StockTransaction {
+  id          Int       @id @default(autoincrement())
+  inventoryId Int
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  type        String // "IN" | "OUT" | "ADJUSTMENT"
+  quantity    Int
+  reason      String?
+  userId      Int?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Cart {
+  id         Int        @id @default(autoincrement())
+  customerId Int
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status     String     @default("active") // "active", "abandoned", "completed"
+  items      CartItem[]
+  abandoned  AbandonedCart?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model AbandonedCart {
+  id            Int      @id @default(autoincrement())
+  cartId        Int      @unique
+  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  customerId    Int
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  reminder1Sent Boolean  @default(false)
+  reminder2Sent Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CartItem {
+  id        Int     @id @default(autoincrement())
+  cartId    Int
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+}
+
+// ─── PHASE 4: POS / BILLING ──────────────────────────────────────────────────
+
+model Bill {
+  id             Int               @id @default(autoincrement())
+  billNumber     String            @unique // e.g. BILL-000001
+  totalAmount    Decimal           @db.Decimal(10, 2) // sum of item subtotals
+  discount       Decimal           @default(0) @db.Decimal(10, 2) // flat discount amount
+  tax            Decimal           @default(0) @db.Decimal(10, 2) // total tax amount
+  grandTotal     Decimal           @db.Decimal(10, 2) // totalAmount - discount + tax
+  status         String            @default("PAID") // PAID | CANCELLED
+  paymentMode    String            @default("CASH") // CASH | CARD | UPI | LINK
+  paymentLinkId  String? // Razorpay payment link ID
+  paymentStatus  String            @default("PENDING") // PENDING | PAID | FAILED
+  shippingStatus String            @default("PENDING") // PENDING | PACKED | SHIPPED | DELIVERED
+  note           String?
+  userId         Int?
+  user           User?             @relation(fields: [userId], references: [id])
+  customerId     Int?
+  customer       Customer?         @relation(fields: [customerId], references: [id])
+  deliveryBoyId  Int?
+  deliveryBoy    User?             @relation("DeliveryBoyBills", fields: [deliveryBoyId], references: [id])
+  items          BillItem[]
+  trackingEvents OrderTracking[]
+  feedback       DeliveryFeedback?
+  createdAt      DateTime          @default(now())
+}
+
+model BillItem {
+  id             Int             @id @default(autoincrement())
+  billId         Int
+  bill           Bill            @relation(fields: [billId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product         @relation(fields: [productId], references: [id])
+  quantity       Int
+  unitPrice      Decimal         @db.Decimal(10, 2)
+  subtotal       Decimal         @db.Decimal(10, 2)
+  returnRequests ReturnRequest[]
+}
+
+model OrderTracking {
+  id        Int      @id @default(autoincrement())
+  billId    Int
+  bill      Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  status    String // e.g., "Order Placed", "Shipped", "Out for Delivery", "Delivered"
+  location  String?
+  message   String?
+  createdAt DateTime @default(now())
+}
+
+model DeliveryFeedback {
+  id        Int      @id @default(autoincrement())
+  billId    Int      @unique
+  bill      Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  rating    Int // 1 to 5
+  message   String?
+  createdAt DateTime @default(now())
+}
+
+model ReturnRequest {
+  id            Int      @id @default(autoincrement())
+  billItemId    Int
+  billItem      BillItem @relation(fields: [billItemId], references: [id], onDelete: Cascade)
+  reason        String
+  refundMethod  String // "UPI" or "Bank Transfer"
+  refundDetails String // UPI ID or Account Number
+  imageUrl      String?
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime @default(now())
+}
+
+model OtpVerification {
+  id         Int      @id @default(autoincrement())
+  email      String   @default("")
+  otp        String
+  expiresAt  DateTime
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model WhatsAppMessage {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
