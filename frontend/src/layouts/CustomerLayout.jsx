@@ -277,6 +277,19 @@ const CustomerLayout = () => {
                 <X className="w-6 h-6" />
               </button>
             </div>
+            <button 
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (isAuthenticated) navigate('/address/new');
+                else navigate('/login');
+              }}
+              className="bg-[#1c55b5] text-white px-4 py-2.5 flex items-center gap-2 text-sm text-left w-full transition-colors"
+            >
+              <MapPin className="w-4 h-4 shrink-0 opacity-80" />
+              <span className="truncate">
+                Deliver to: {user?.address ? user.address.substring(0, 20) + '...' : 'Select Location'}
+              </span>
+            </button>
 
             <div className="flex-1 overflow-y-auto py-2">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
