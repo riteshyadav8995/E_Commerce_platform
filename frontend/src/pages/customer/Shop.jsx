@@ -83,7 +83,7 @@ const Shop = () => {
             <p className="text-gray-500 dark:text-gray-400">Please check the spelling or try searching for something else</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map((product) => (
               <div 
                 key={product.id} 

@@ -188,7 +188,7 @@ const Storefront = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {filteredProducts.map((product) => (
                 <div 
                   key={product.id} 
@@ -207,7 +207,7 @@ const Storefront = () => {
                         e.stopPropagation();
                         addToCart(product);
                       }}
-                      className="absolute bottom-2 right-2 w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-[#2874f0] hover:border-[#2874f0] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute bottom-2 right-2 w-8 h-8 md:w-10 md:h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-[#2874f0] hover:border-[#2874f0] shadow-md md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10"
                       title="Add to Cart"
                     >
                       <Plus className="w-5 h-5" />
@@ -226,9 +226,9 @@ const Storefront = () => {
 
                     <div className="mt-auto">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through">₹{(parseFloat(product.price) * 1.4).toLocaleString('en-IN')}</span>
-                        <span className="text-xs font-bold text-green-600">28% off</span>
+                        <span className="text-base md:text-lg font-bold text-gray-900 dark:text-white">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
+                        <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-through">₹{(parseFloat(product.price) * 1.4).toLocaleString('en-IN')}</span>
+                        <span className="text-[10px] md:text-xs font-bold text-green-600">28% off</span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Free delivery</p>
                     </div>

@@ -22,13 +22,22 @@ const Login = () => {
       login(response.data);
       
       const isCheckout = searchParams.get('checkout') === 'true';
+      const redirectParams = searchParams.get('redirect');
+
       if (!isCheckout) {
         clearCart();
       }
       
       // Redirect back to store for customers, otherwise dashboard
       if (response.data.role === 'Customer') {
-        navigate('/store');
+        if (isCheckout) {
+          navigate('/store');
+          setTimeout(() => window.dispatchEvent(new CustomEvent('open-cart')), 300);
+        } else if (redirectParams === 'inquiry') {
+          navigate('/about');
+        } else {
+          navigate('/store');
+        }
       } else {
         navigate('/');
       }

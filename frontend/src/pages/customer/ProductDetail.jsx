@@ -49,8 +49,7 @@ const ProductDetail = () => {
     // Add to cart and immediately redirect to checkout or login if not authenticated
     addToCart(product, quantity);
     if (!isAuthenticated) {
-      alert("Please login to proceed with your order.");
-      navigate('/login');
+      navigate('/login?checkout=true');
     } else {
       // Assuming a checkout route exists or will be implemented
       // For now, let's open cart so they can checkout
