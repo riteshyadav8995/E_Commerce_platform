@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { Download, RefreshCw, FileText } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -14,8 +14,7 @@ const Orders = () => {
     try {
       // Using the same endpoint but it might fetch pos orders too.
       // We can just fetch all bills as they are all "orders".
-      const res = await axios.get('http://localhost:5000/api/billing', {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get('/billing', {
         params: { limit: 100 }
       });
       setOrders(res.data.bills);
@@ -33,10 +32,9 @@ const Orders = () => {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await axios.patch(
-        `http://localhost:5000/api/billing/${id}/shipping`,
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.patch(
+        `/billing/${id}/shipping`,
+        { status: newStatus }
       );
       toast.success('Status updated & WhatsApp message sent!');
       fetchOrders();
@@ -48,8 +46,7 @@ const Orders = () => {
 
   const handleExportCsv = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/billing/export/csv', {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await api.get('/billing/export/csv', {
         responseType: 'blob',
       });
       
