@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import useCartStore from '../store/cartStore';
 import api from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
 const Login = () => {
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -90,6 +91,13 @@ const Login = () => {
       <div className="mt-6 text-center text-sm">
         <span className="text-gray-600 dark:text-gray-400">Don't have an account? </span>
         <Link to="/register" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500">Sign up</Link>
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <Link to="/store" className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
       </div>
     </div>
   );

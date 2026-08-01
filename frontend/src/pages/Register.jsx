@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
 const Register = () => {
   const { register, handleSubmit, formState: { errors }, getValues, trigger } = useForm();
@@ -165,6 +166,13 @@ const Register = () => {
       <div className="mt-6 text-center text-sm">
         <span className="text-gray-600 dark:text-gray-400">Already have an account? </span>
         <Link to="/login" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500">Sign in</Link>
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <Link to="/store" className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
       </div>
     </div>
   );
