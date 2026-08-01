@@ -102,7 +102,8 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (!user.isEmailVerified) {
+    // Bypass email verification for Admins (who might be seeded manually)
+    if (!user.isEmailVerified && user.role.name !== 'Admin') {
       return res.status(403).json({ message: 'Email is not verified. Please register again or verify your email.' });
     }
 
