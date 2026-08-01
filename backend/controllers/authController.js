@@ -66,6 +66,7 @@ const registerUser = async (req, res) => {
         passwordHash: hashedPassword,
         phone,
         roleId: role.id,
+        isEmailVerified: true,
       },
       include: { role: true },
     });
@@ -97,7 +98,15 @@ const loginUser = async (req, res) => {
       include: { role: true },
     });
 
-    if (user && (await bcrypt.compare(password, user.passwordHash))) {
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ message: 'Email is not verified. Please register again or verify your email.' });
+    }
+
+    if (await bcrypt.compare(password, user.passwordHash)) {
       res.json({
         id: user.id,
         name: user.name,

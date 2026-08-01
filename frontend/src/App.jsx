@@ -53,7 +53,7 @@ const CustomerRoute = ({ children }) => {
 
 const RoleBasedRedirect = () => {
   const { isAuthenticated, user } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/store" replace />;
   if (user?.role === 'Admin' || user?.role === 'Cashier') {
     return <Navigate to="/dashboard" replace />;
   }

@@ -115,6 +115,31 @@ const sendInquiryEmail = async (name, email, phone, message) => {
  */
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    if (process.env.BREVO_API_KEY) {
+      // Use Brevo API
+      const axios = require('axios');
+      const senderEmail = process.env.EMAIL_USER || process.env.SMTP_EMAIL || 'no-reply@store.com';
+      await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { name: 'LuxeStore Admin', email: senderEmail },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: html || `<p>${text}</p>`,
+          textContent: text,
+        },
+        {
+          headers: {
+            'api-key': process.env.BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+      return { success: true, message: 'Email sent via Brevo' };
+    }
+
+    // Fallback to nodemailer
     const tp = await getTransporter();
 
     const mailOptions = {
@@ -128,7 +153,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
     const info = await tp.sendMail(mailOptions);
     return info;
   } catch (error) {
-    console.error('Error sending generic email:', error);
+    console.error('Error sending generic email:', error.response?.data || error.message || error);
     throw error;
   }
 };
