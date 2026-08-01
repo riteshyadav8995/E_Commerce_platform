@@ -129,7 +129,7 @@ export default function BillDetail() {
           <p className="text-sm text-gray-500">#{bill.billNumber}</p>
         </div>
         <div className="text-right text-sm text-gray-600">
-          <p className="font-bold text-gray-900">ShopAdmin Inc.</p>
+          <p className="font-bold text-gray-900">LuxeStore Inc.</p>
           <p>Date: {new Date(bill.createdAt).toLocaleDateString()}</p>
         </div>
       </div>

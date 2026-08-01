@@ -60,7 +60,7 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200">
+    <div className="h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200">
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
@@ -79,7 +79,7 @@ const MainLayout = () => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-primary-600" />
-            <span className="font-bold text-gray-900 dark:text-white text-lg">ShopAdmin</span>
+            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">LuxeStore Admin</span>
           </div>
           <button
             className="lg:hidden text-gray-400 dark:text-gray-500"
@@ -139,7 +139,7 @@ const MainLayout = () => {
             </button>
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-primary-600" />
-              <span className="font-bold text-gray-900 dark:text-white">ShopAdmin</span>
+              <span className="font-bold text-gray-900 dark:text-white tracking-tight">LuxeStore Admin</span>
             </div>
           </div>
           {/* Push to right on desktop */}
