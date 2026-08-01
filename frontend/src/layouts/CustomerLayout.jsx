@@ -102,7 +102,7 @@ const CustomerLayout = () => {
       )}
 
       {/* Top Navigation */}
-      <header className="bg-[#2874f0] text-white sticky top-0 z-40 shadow-md">
+      <header className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white sticky top-0 z-40 shadow-sm border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 gap-2 md:gap-4">
             
@@ -110,14 +110,14 @@ const CustomerLayout = () => {
             <div className="flex items-center gap-3 shrink-0">
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-1 -ml-2 rounded-md hover:bg-white/10"
+                className="md:hidden p-1 -ml-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <Menu className="w-6 h-6 text-white" />
+                <Menu className="w-6 h-6 text-gray-900 dark:text-white" />
               </button>
               
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/store')}>
-                <ShoppingBag className="w-5 h-5 md:w-6 md:h-6 text-yellow-400 shrink-0" />
-                <span className="font-bold text-lg md:text-xl tracking-tight italic hidden sm:block">LuxeStore</span>
+                <ShoppingBag className="w-5 h-5 md:w-6 md:h-6 text-[#2874f0] shrink-0" />
+                <span className="font-bold text-lg md:text-xl text-gray-900 dark:text-white tracking-tight italic hidden sm:block">LuxeStore</span>
               </div>
               
               <button 
@@ -125,12 +125,12 @@ const CustomerLayout = () => {
                   if (isAuthenticated) navigate('/address/new');
                   else navigate('/login');
                 }}
-                className="hidden lg:flex items-center gap-1.5 hover:border hover:border-white p-2 rounded-sm border border-transparent transition-all"
+                className="hidden lg:flex items-center gap-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-sm transition-all"
               >
-                <MapPin className="w-4 h-4 mt-1" />
+                <MapPin className="w-4 h-4 mt-1 text-gray-500 dark:text-gray-400" />
                 <div className="flex flex-col text-left">
-                  <span className="text-[11px] text-gray-200 leading-none">Deliver to</span>
-                  <span className="text-[13px] font-bold leading-none mt-0.5">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 leading-none">Deliver to</span>
+                  <span className="text-[13px] font-bold leading-none mt-0.5 text-gray-900 dark:text-white">
                     {user?.address ? user.address.substring(0, 15) + '...' : 'Select Location'}
                   </span>
                 </div>
@@ -139,14 +139,14 @@ const CustomerLayout = () => {
 
             {/* Desktop Search Bar */}
             <div className="flex-1 max-w-3xl hidden md:flex">
-              <form onSubmit={handleSearchSubmit} className="w-full flex">
+              <form onSubmit={handleSearchSubmit} className="w-full flex border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden focus-within:border-[#2874f0] dark:focus-within:border-[#4da3ff] transition-colors shadow-sm">
                 <input 
                   type="text" 
                   name="search"
                   placeholder="Search for products, brands and more" 
-                  className="w-full px-4 py-2 text-gray-900 rounded-l-sm outline-none placeholder-gray-500"
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none placeholder-gray-500"
                 />
-                <button type="submit" className="bg-white px-4 text-[#2874f0] rounded-r-sm hover:bg-gray-100 flex items-center justify-center">
+                <button type="submit" className="bg-gray-100 dark:bg-gray-700 px-4 text-[#2874f0] dark:text-[#4da3ff] hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center border-l border-gray-300 dark:border-gray-600">
                   <Search className="w-5 h-5" />
                 </button>
               </form>
@@ -161,10 +161,10 @@ const CustomerLayout = () => {
                   <div className="relative group" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center gap-1.5 font-medium hover:text-gray-200 transition-colors"
+                      className="flex items-center gap-1.5 font-medium hover:text-[#2874f0] dark:hover:text-[#4da3ff] transition-colors"
                     >
-                      <span className="truncate max-w-[100px]">{user?.name}</span>
-                      <ChevronRight className="w-4 h-4 rotate-90" />
+                      <span className="truncate max-w-[100px] text-gray-900 dark:text-white">{user?.name}</span>
+                      <ChevronRight className="w-4 h-4 rotate-90 text-gray-900 dark:text-white" />
                     </button>
 
                     {isDropdownOpen && (
@@ -194,7 +194,7 @@ const CustomerLayout = () => {
                     )}
                   </div>
                 ) : (
-                  <Link to="/login" className="bg-white text-[#2874f0] font-bold px-8 py-1.5 rounded-sm hover:bg-gray-100 transition-colors">
+                  <Link to="/login" className="bg-[#2874f0] text-white font-bold px-8 py-1.5 rounded-sm hover:bg-blue-700 transition-colors shadow-sm">
                     Login
                   </Link>
                 )}
@@ -202,7 +202,7 @@ const CustomerLayout = () => {
 
               {/* Login text for mobile */}
               {!isAuthenticated && (
-                <Link to="/login" className="md:hidden font-medium text-sm hover:text-gray-200">
+                <Link to="/login" className="md:hidden font-medium text-sm text-[#2874f0] dark:text-[#4da3ff] hover:underline">
                   Login
                 </Link>
               )}
@@ -210,39 +210,39 @@ const CustomerLayout = () => {
               {/* Dark Mode Toggle */}
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {isDarkMode ? <Sun className="w-5 h-5 text-gray-900 dark:text-white" /> : <Moon className="w-5 h-5 text-gray-900 dark:text-white" />}
               </button>
 
               {/* Cart Icon */}
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-cart'))}
-                className="flex items-center gap-1 md:gap-2 font-medium hover:text-gray-200 transition-colors relative"
+                className="flex items-center gap-1 md:gap-2 font-medium hover:text-[#2874f0] dark:hover:text-[#4da3ff] transition-colors relative group"
               >
                 <div className="relative">
-                  <ShoppingCart className="w-6 h-6" />
+                  <ShoppingCart className="w-6 h-6 text-gray-900 dark:text-white group-hover:text-[#2874f0] transition-colors" />
                   {cartCount > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-gray-900 text-[10px] md:text-[11px] font-bold w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center border-2 border-[#2874f0]">
+                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-gray-900 text-[10px] md:text-[11px] font-bold w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
                       {cartCount}
                     </span>
                   )}
                 </div>
-                <span className="hidden md:inline">Cart</span>
+                <span className="hidden md:inline text-gray-900 dark:text-white group-hover:text-[#2874f0] transition-colors">Cart</span>
               </button>
             </div>
           </div>
           
           {/* Mobile Search Bar */}
           <div className="md:hidden pb-3">
-            <form onSubmit={handleSearchSubmit} className="w-full flex h-9 shadow-sm">
+            <form onSubmit={handleSearchSubmit} className="w-full flex h-10 border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden focus-within:border-[#2874f0] dark:focus-within:border-[#4da3ff] transition-colors shadow-sm">
               <input 
                 type="text" 
                 name="search"
                 placeholder="Search products..." 
-                className="w-full px-3 py-1 text-gray-900 text-sm rounded-l-sm outline-none"
+                className="w-full px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm outline-none"
               />
-              <button type="submit" className="bg-white px-3 text-[#2874f0] rounded-r-sm border-l border-gray-200 flex items-center justify-center">
+              <button type="submit" className="bg-gray-100 dark:bg-gray-700 px-3 text-[#2874f0] dark:text-[#4da3ff] hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center border-l border-gray-300 dark:border-gray-600">
                 <Search className="w-4 h-4" />
               </button>
             </form>
@@ -347,58 +347,58 @@ const CustomerLayout = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 pt-16 pb-8 border-t border-gray-800 mt-auto">
+      <footer className="bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 pt-16 pb-8 border-t border-gray-200 dark:border-gray-800 mt-auto transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="w-6 h-6 text-white" />
-                <span className="font-bold text-white text-xl tracking-tight">LuxeStore</span>
+                <ShoppingBag className="w-6 h-6 text-[#2874f0] dark:text-white" />
+                <span className="font-bold text-gray-900 dark:text-white text-xl tracking-tight">LuxeStore</span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                 Elevating your lifestyle with premium quality products. We believe in delivering excellence to your doorstep.
               </p>
               <div className="flex gap-4 pt-2">
-                <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors cursor-pointer">Facebook</a>
-                <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors cursor-pointer">Twitter</a>
-                <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors cursor-pointer">LinkedIn</a>
+                <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#2874f0] dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer">Facebook</a>
+                <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#2874f0] dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer">Twitter</a>
+                <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#2874f0] dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer">LinkedIn</a>
               </div>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-4">Quick Links</h3>
+              <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/store" className="hover:text-white transition-colors">Home</Link></li>
-                <li><Link to="/shop" className="hover:text-white transition-colors">Shop Collection</Link></li>
-                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link to="/page/faq" className="hover:text-white transition-colors">FAQ</Link></li>
+                <li><Link to="/store" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Home</Link></li>
+                <li><Link to="/shop" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Shop Collection</Link></li>
+                <li><Link to="/about" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/page/faq" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">FAQ</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-4">Customer Care</h3>
+              <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Customer Care</h3>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/page/track-order" className="hover:text-white transition-colors">Track Order</Link></li>
-                <li><Link to="/page/returns" className="hover:text-white transition-colors">Returns & Exchanges</Link></li>
-                <li><Link to="/page/shipping" className="hover:text-white transition-colors">Shipping Policy</Link></li>
-                <li><Link to="/page/terms" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
+                <li><Link to="/page/track-order" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Track Order</Link></li>
+                <li><Link to="/page/returns" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Returns & Exchanges</Link></li>
+                <li><Link to="/page/shipping" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Shipping Policy</Link></li>
+                <li><Link to="/page/terms" className="hover:text-[#2874f0] dark:hover:text-white transition-colors">Terms & Conditions</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-4">Contact Info</h3>
+              <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Contact Info</h3>
               <ul className="space-y-4 text-sm">
                 <li className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-gray-500 shrink-0" />
+                  <MapPin className="w-5 h-5 text-gray-500 dark:text-gray-400 shrink-0" />
                   <span>123 Commerce Avenue,<br/>Tech City, 10001</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-gray-500 shrink-0" />
+                  <Phone className="w-5 h-5 text-gray-500 dark:text-gray-400 shrink-0" />
                   <span>+1 (555) 123-4567</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-500 shrink-0" />
+                  <Mail className="w-5 h-5 text-gray-500 dark:text-gray-400 shrink-0" />
                   <span>support@luxestore.com</span>
                 </li>
               </ul>
@@ -407,18 +407,18 @@ const CustomerLayout = () => {
                   if (isAuthenticated) setIsInquiryOpen(true);
                   else navigate('/login?redirect=inquiry');
                 }}
-                className="mt-6 w-full py-2.5 px-4 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-sm text-sm"
+                className="mt-6 w-full py-2.5 px-4 bg-[#2874f0] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm text-sm"
               >
                 Send an Inquiry
               </button>
             </div>
           </div>
           
-          <div className="pt-8 border-t border-gray-800 text-sm text-center text-gray-500 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="pt-8 border-t border-gray-200 dark:border-gray-800 text-sm text-center text-gray-500 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors">
             <p>&copy; {new Date().getFullYear()} LuxeStore. All rights reserved.</p>
             <div className="flex gap-4">
-              <Link to="/page/privacy" className="cursor-pointer hover:text-gray-300">Privacy Policy</Link>
-              <Link to="/page/terms" className="cursor-pointer hover:text-gray-300">Terms of Service</Link>
+              <Link to="/page/privacy" className="cursor-pointer hover:text-[#2874f0] dark:hover:text-white transition-colors">Privacy Policy</Link>
+              <Link to="/page/terms" className="cursor-pointer hover:text-[#2874f0] dark:hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
