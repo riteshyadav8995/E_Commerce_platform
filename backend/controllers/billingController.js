@@ -1,10 +1,19 @@
 const prisma = require('../utils/prisma');
+const { withBillNumber } = require('../utils/billNumber');
+const { frontendUrl } = require('../utils/appUrls');
+const {
+  confirmBillPayment,
+  sendOrderConfirmationNotifications,
+} = require('../services/paymentService');
 
-// Generate a sequential bill number like BILL-000001
-async function generateBillNumber() {
-  const count = await prisma.bill.count();
-  return `BILL-${String(count + 1).padStart(6, '0')}`;
-}
+const STAFF_ROLES = ['Admin', 'Manager', 'Cashier', 'DeliveryBoy'];
+
+// Invoices and packing slips are addressed by bill number, which is a short
+// sequential string. Without this check any signed-in user could walk
+// BILL-000001, BILL-000002, ... and download every other customer's invoice.
+const canAccessBill = (user, bill) =>
+  STAFF_ROLES.includes(user?.role?.name) ||
+  (bill.userId != null && bill.userId === user?.id);
 
 // ─── POST /api/billing ─────────────────────────────────────────────────────────
 // Body: { items: [{productId, quantity}], discount, paymentMode, note }
@@ -23,8 +32,27 @@ const createBill = async (req, res) => {
       return res.status(400).json({ message: 'At least one item is required' });
     }
 
+    // Collapse repeated lines for the same product into one. Without this a
+    // cart holding the same product twice produced duplicate ids, and the
+    // length check below rejected the whole order as "product not found".
+    const mergedItems = [];
+    const itemIndexByProduct = new Map();
+    for (const item of items) {
+      const productId = parseInt(item.productId);
+      const quantity = parseInt(item.quantity);
+      if (!Number.isInteger(productId) || !Number.isInteger(quantity) || quantity <= 0) {
+        return res.status(400).json({ message: 'Each item needs a valid productId and a positive quantity' });
+      }
+      if (itemIndexByProduct.has(productId)) {
+        mergedItems[itemIndexByProduct.get(productId)].quantity += quantity;
+      } else {
+        itemIndexByProduct.set(productId, mergedItems.length);
+        mergedItems.push({ productId, quantity });
+      }
+    }
+
     // Load product + inventory data for each item
-    const productIds = items.map((i) => parseInt(i.productId));
+    const productIds = mergedItems.map((i) => i.productId);
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, status: 'active' },
       include: {
@@ -36,48 +64,47 @@ const createBill = async (req, res) => {
       return res.status(400).json({ message: 'One or more products not found or inactive' });
     }
 
+    const productById = new Map(products.map((p) => [p.id, p]));
+
     // Validate stock availability
-    for (const item of items) {
-      const product = products.find((p) => p.id === parseInt(item.productId));
-      const totalStock = product.inventories.reduce((s, inv) => s + inv.quantity, 0);
-      if (totalStock < parseInt(item.quantity)) {
+    for (const item of mergedItems) {
+      const product = productById.get(item.productId);
+      const availableStock = product.inventories[0]?.quantity ?? 0;
+      if (availableStock < item.quantity) {
         return res.status(400).json({
-          message: `Insufficient stock for "${product.name}". Available: ${totalStock}`,
+          message: `Insufficient stock for "${product.name}". Available: ${availableStock}`,
         });
       }
     }
 
-    // Calculate totals
+    // Calculate totals. Money is rounded to paise at every step so the stored
+    // Decimal(10,2) values and the amount handed to the payment gateway agree.
+    const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
     let totalAmount = 0;
-    const billItemsData = items.map((item) => {
-      const product = products.find((p) => p.id === parseInt(item.productId));
+    let taxAmount = 0;
+    const billItemsData = mergedItems.map((item) => {
+      const product = productById.get(item.productId);
       const unitPrice = parseFloat(product.price);
-      const qty = parseInt(item.quantity);
-      const subtotal = unitPrice * qty;
-      totalAmount += subtotal;
+      const subtotal = round2(unitPrice * item.quantity);
+      totalAmount = round2(totalAmount + subtotal);
+      taxAmount = round2(taxAmount + subtotal * (parseFloat(product.tax) / 100));
       return {
-        productId: parseInt(item.productId),
-        quantity: qty,
+        productId: item.productId,
+        quantity: item.quantity,
         unitPrice,
         subtotal,
       };
     });
 
-    // Tax = sum of (product.tax% * subtotal) for each item
-    let taxAmount = 0;
-    for (const item of items) {
-      const product = products.find((p) => p.id === parseInt(item.productId));
-      const unitPrice = parseFloat(product.price);
-      const taxRate = parseFloat(product.tax) / 100;
-      taxAmount += unitPrice * parseInt(item.quantity) * taxRate;
-    }
-
-    const discountAmount = parseFloat(discount) || 0;
-    const grandTotal = totalAmount - discountAmount + taxAmount;
-    const billNumber = await generateBillNumber();
+    const discountAmount = round2(parseFloat(discount) || 0);
+    const grandTotal = round2(totalAmount - discountAmount + taxAmount);
 
     // Run everything in a transaction
-    const transactionResult = await prisma.$transaction(async (tx) => {
+    const isPendingPayment = paymentMode === 'LINK' || (isPOS && paymentMode === 'UPI');
+
+    const transactionResult = await withBillNumber((billNumber) =>
+      prisma.$transaction(async (tx) => {
       // 1. Create Bill
       const newBill = await tx.bill.create({
         data: {
@@ -106,35 +133,34 @@ const createBill = async (req, res) => {
       const modifiedInventoryIds = [];
 
       // 2. Decrement inventory + log stock transaction for each item ONLY if not pending payment
-      const isPendingPayment = paymentMode === 'LINK' || (isPOS && paymentMode === 'UPI');
       if (!isPendingPayment) {
-        for (const item of items) {
-          const product = products.find((p) => p.id === parseInt(item.productId));
+        for (const item of mergedItems) {
+          const product = productById.get(item.productId);
           const mainInventory = product.inventories[0]; // use highest-stock inventory record
           if (!mainInventory) continue;
 
-          const qty = parseInt(item.quantity);
           await tx.inventory.update({
             where: { id: mainInventory.id },
-            data: { quantity: { decrement: qty } },
+            data: { quantity: { decrement: item.quantity } },
           });
 
           await tx.stockTransaction.create({
             data: {
               inventoryId: mainInventory.id,
               type: 'OUT',
-              quantity: qty,
+              quantity: item.quantity,
               reason: `Sale — ${newBill.billNumber}`,
               userId: req.user?.id || null,
             },
           });
-          
+
           modifiedInventoryIds.push(mainInventory.id);
         }
       }
 
       return { newBill, modifiedInventoryIds };
-    });
+      })
+    );
 
     let bill = transactionResult.newBill;
     const modifiedInventoryIds = transactionResult.modifiedInventoryIds;
@@ -161,24 +187,10 @@ const createBill = async (req, res) => {
       }
     } else if (paymentMode === 'CASH') {
       // Send notifications immediately for COD
-      const { generateBillPDF } = require('../services/pdfService');
-      const { sendBillEmail } = require('../services/emailService');
-      const { sendWhatsAppMessage } = require('../services/whatsappService');
-
-      try {
-        if (bill.user) {
-          if (bill.user.email) {
-            const pdfBuffer = await generateBillPDF(bill);
-            await sendBillEmail(bill.user.email, bill.billNumber, pdfBuffer, bill.user.name);
-          }
-          if (bill.user.phone) {
-            const message = `Hello ${bill.user.name},\n\nYour order ${bill.billNumber} has been successfully confirmed!\nTotal Amount: ₹${bill.grandTotal}\n\nThank you for shopping with LuxeStore!`;
-            await sendWhatsAppMessage(bill.user.phone, message);
-          }
-        }
-      } catch(e) {
-        console.error("Failed to send notifications for COD order", e);
-      }
+      await sendOrderConfirmationNotifications(
+        bill,
+        `Your order ${bill.billNumber} has been successfully confirmed!`
+      );
     }
 
     res.status(201).json(bill);
@@ -302,6 +314,8 @@ const cancelBill = async (req, res) => {
       return res.status(400).json({ message: 'Bill is already cancelled' });
     }
 
+    const stockWasDeducted = bill.paymentStatus === 'PAID';
+
     const updatedBill = await prisma.$transaction(async (tx) => {
       // Mark bill cancelled
       const b = await tx.bill.update({
@@ -313,8 +327,10 @@ const cancelBill = async (req, res) => {
         },
       });
 
-      // Restore inventory for each item
-      for (const item of bill.items) {
+      // Restore inventory only for bills whose stock was actually taken.
+      // Orders awaiting payment (online links, POS UPI) never left inventory,
+      // so restocking them here invented stock that does not exist.
+      for (const item of stockWasDeducted ? bill.items : []) {
         const mainInventory = item.product.inventories[0];
         if (!mainInventory) continue;
 
@@ -376,16 +392,17 @@ const updateShippingStatus = async (req, res) => {
     });
 
     const { sendWhatsAppMessage } = require('../services/whatsappService');
+    const storeUrl = frontendUrl();
     const phone = updated.user?.phone || updated.customer?.phone || bill.customer?.phone;
     
     if (phone) {
       let whatsappMessage = `*Order Update 📦*\n\nYour Order *${updated.billNumber}* is now: *${status}*.`;
       if (status === 'SHIPPED') {
-         whatsappMessage = `*Great News! 🚀*\n\nYour Order *${updated.billNumber}* has been *SHIPPED*! It is on its way to you.\n\nTrack your order here: http://localhost:5173/track-order/${updated.billNumber}`;
+         whatsappMessage = `*Great News! 🚀*\n\nYour Order *${updated.billNumber}* has been *SHIPPED*! It is on its way to you.\n\nTrack your order here: ${storeUrl}/track-order/${updated.billNumber}`;
       } else if (status === 'OUT_FOR_DELIVERY') {
          whatsappMessage = `*Out for Delivery! 🛵*\n\nYour Order *${updated.billNumber}* is out for delivery. Our rider will reach you shortly.`;
       } else if (status === 'DELIVERED') {
-         whatsappMessage = `*Order Delivered! 🎉*\n\nYour Order *${updated.billNumber}* has been successfully delivered.\n\nPlease share your feedback about the delivery experience:\nhttp://localhost:5173/delivery-feedback/${updated.billNumber}`;
+         whatsappMessage = `*Order Delivered! 🎉*\n\nYour Order *${updated.billNumber}* has been successfully delivered.\n\nPlease share your feedback about the delivery experience:\n${storeUrl}/delivery-feedback/${updated.billNumber}`;
       }
       await sendWhatsAppMessage(phone, whatsappMessage).catch(console.error);
     }
@@ -400,102 +417,43 @@ const updateShippingStatus = async (req, res) => {
 // ─── POST /api/billing/verify-payment ───────────────────────────────────────
 const verifyPayment = async (req, res) => {
   try {
-    const { payment_link_id, payment_id } = req.body;
-    
-    if (!payment_link_id && !payment_id) {
-      return res.status(400).json({ message: 'payment_link_id or payment_id required' });
+    const { payment_link_id } = req.body;
+
+    // This endpoint is unauthenticated (the browser hits it on return from the
+    // gateway), so the identifier is the only thing tying a request to a bill.
+    // It used to accept a request carrying only payment_id, which left
+    // paymentLinkId undefined — and Prisma drops undefined filters, so
+    // findFirst happily returned an arbitrary bill and marked it PAID.
+    if (!payment_link_id || typeof payment_link_id !== 'string') {
+      return res.status(400).json({ message: 'payment_link_id is required' });
     }
 
-    let bill = await prisma.bill.findFirst({
+    const existing = await prisma.bill.findFirst({
       where: { paymentLinkId: payment_link_id },
-      include: { 
-        customer: true,
-        user: true,
-        items: { include: { product: { include: { inventories: { orderBy: { quantity: 'desc' }, take: 1 } } } } }
-      }
+      select: { id: true, billNumber: true },
     });
 
-    if (!bill) {
+    if (!existing) {
       return res.status(404).json({ message: 'Bill not found' });
     }
 
-    // Only process if not already PAID
-    if (bill.paymentStatus !== 'PAID') {
-      const transactionResult = await prisma.$transaction(async (tx) => {
-        const updatedBill = await tx.bill.update({
-          where: { id: bill.id },
-          data: { paymentStatus: 'PAID', status: 'PAID' },
-          include: { 
-            customer: true,
-            user: true,
-            items: { include: { product: true } }
-          }
-        });
+    const result = await confirmBillPayment(existing.id, {
+      reason: `Sale — ${existing.billNumber} (Online Payment Success)`,
+      trackingMessage: 'Online payment has been successfully verified.',
+    });
 
-        const modifiedInventoryIds = [];
-        // Deduct inventory now since payment is confirmed
-        for (const item of bill.items) {
-          const mainInventory = item.product.inventories?.[0];
-          if (!mainInventory) continue;
-
-          await tx.inventory.update({
-            where: { id: mainInventory.id },
-            data: { quantity: { decrement: item.quantity } },
-          });
-
-          await tx.stockTransaction.create({
-            data: {
-              inventoryId: mainInventory.id,
-              type: 'OUT',
-              quantity: item.quantity,
-              reason: `Sale — ${bill.billNumber} (Online Payment Success)`,
-              userId: bill.userId || null,
-            },
-          });
-          modifiedInventoryIds.push(mainInventory.id);
-        }
-        
-        await tx.orderTracking.create({
-          data: {
-            billId: bill.id,
-            status: 'Payment Received',
-            message: 'Online payment has been successfully verified.'
-          }
-        });
-
-        return { updatedBill, modifiedInventoryIds };
-      });
-
-      bill = transactionResult.updatedBill;
-      const modifiedInventoryIds = transactionResult.modifiedInventoryIds;
-
-      // Check low stock and notify admin
-      const { checkAndNotifyLowStock } = require('../services/inventoryService');
-      for (const invId of modifiedInventoryIds) {
-        await checkAndNotifyLowStock(invId);
-      }
-
-      const { generateBillPDF } = require('../services/pdfService');
-      const { sendBillEmail } = require('../services/emailService');
-      const { sendWhatsAppMessage } = require('../services/whatsappService');
-
-      try {
-        if (bill.user) {
-          if (bill.user.email) {
-            const pdfBuffer = await generateBillPDF(bill);
-            await sendBillEmail(bill.user.email, bill.billNumber, pdfBuffer, bill.user.name);
-          }
-          if (bill.user.phone) {
-            const message = `Hello ${bill.user.name},\n\nYour payment was successful and order ${bill.billNumber} has been confirmed!\nTotal Amount: ₹${bill.grandTotal}\n\nThank you for shopping with LuxeStore!`;
-            await sendWhatsAppMessage(bill.user.phone, message);
-          }
-        }
-      } catch(e) {
-        console.error("Failed to generate/send PDF email or WhatsApp via verifyPayment", e);
-      }
+    if (!result) {
+      return res.status(404).json({ message: 'Bill not found' });
     }
 
-    res.json({ success: true, bill });
+    if (!result.alreadyPaid) {
+      await sendOrderConfirmationNotifications(
+        result.bill,
+        `Your payment was successful and order ${result.bill.billNumber} has been confirmed!`
+      );
+    }
+
+    res.json({ success: true, bill: result.bill });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -593,6 +551,10 @@ const downloadInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    if (!canAccessBill(req.user, bill)) {
+      return res.status(403).json({ message: 'Not authorized for this order' });
+    }
+
     const { generateBillPDF } = require('../services/pdfService');
     const pdfBuffer = await generateBillPDF(bill);
 
@@ -622,6 +584,10 @@ const downloadPackingSlip = async (req, res) => {
 
     if (!bill) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!canAccessBill(req.user, bill)) {
+      return res.status(403).json({ message: 'Not authorized for this order' });
     }
 
     const { generatePackingSlipPDF } = require('../services/pdfService');
@@ -774,52 +740,21 @@ const markPaid = async (req, res) => {
     const id = parseInt(req.params.id);
     const bill = await prisma.bill.findUnique({
       where: { id },
-      include: {
-        items: { include: { product: { include: { inventories: { orderBy: { quantity: 'desc' }, take: 1 } } } } },
-      }
+      select: { id: true, billNumber: true, paymentStatus: true },
     });
 
     if (!bill) return res.status(404).json({ message: 'Bill not found' });
     if (bill.paymentStatus === 'PAID') return res.status(400).json({ message: 'Bill is already paid' });
 
-    const transactionResult = await prisma.$transaction(async (tx) => {
-      const updatedBill = await tx.bill.update({
-        where: { id },
-        data: { paymentStatus: 'PAID', status: 'PAID' },
-        include: { items: { include: { product: true } } }
-      });
-
-      const modifiedInventoryIds = [];
-      // Deduct inventory now since payment is confirmed
-      for (const item of bill.items) {
-        const mainInventory = item.product.inventories?.[0];
-        if (!mainInventory) continue;
-
-        await tx.inventory.update({
-          where: { id: mainInventory.id },
-          data: { quantity: { decrement: item.quantity } },
-        });
-
-        await tx.stockTransaction.create({
-          data: {
-            inventoryId: mainInventory.id,
-            type: 'OUT',
-            quantity: item.quantity,
-            reason: `Sale — ${bill.billNumber} (Manual Confirm)`,
-            userId: req.user?.id || null,
-          },
-        });
-        modifiedInventoryIds.push(mainInventory.id);
-      }
-      return { updatedBill, modifiedInventoryIds };
+    const result = await confirmBillPayment(id, {
+      userId: req.user?.id || null,
+      reason: `Sale — ${bill.billNumber} (Manual Confirm)`,
+      trackingMessage: 'Payment confirmed manually by staff.',
     });
 
-    const { checkAndNotifyLowStock } = require('../services/inventoryService');
-    for (const invId of transactionResult.modifiedInventoryIds) {
-      await checkAndNotifyLowStock(invId);
-    }
+    if (!result) return res.status(404).json({ message: 'Bill not found' });
 
-    res.json({ success: true, bill: transactionResult.updatedBill });
+    res.json({ success: true, bill: result.bill });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

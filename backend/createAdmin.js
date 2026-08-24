@@ -20,7 +20,7 @@ async function main() {
   if (existingUser) {
     await prisma.user.update({
       where: { email },
-      data: { roleId: role.id, passwordHash: hashedPassword, phone }
+      data: { roleId: role.id, passwordHash: hashedPassword, phone, isEmailVerified: true }
     });
     console.log('Admin user updated successfully.');
   } else {
@@ -30,7 +30,8 @@ async function main() {
         email,
         phone,
         passwordHash: hashedPassword,
-        roleId: role.id
+        roleId: role.id,
+        isEmailVerified: true
       }
     });
     console.log('Admin user created successfully.');

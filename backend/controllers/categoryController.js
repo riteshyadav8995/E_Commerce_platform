@@ -1,34 +1,5 @@
 const prisma = require('../utils/prisma');
-const cloudinary = require('../utils/cloudinary');
-
-const streamUpload = (buffer, folder) => {
-  return new Promise((resolve, reject) => {
-    if (!process.env.CLOUDINARY_API_KEY) {
-      console.warn('Cloudinary not configured. Skipping image upload.');
-      return resolve(null);
-    }
-    const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: 'image' },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result.secure_url);
-      }
-    );
-    stream.end(buffer);
-  });
-};
-
-const deleteFromCloudinary = async (imageUrl) => {
-  if (!imageUrl) return;
-  try {
-    const parts = imageUrl.split('/');
-    const folderAndFile = parts.slice(-2).join('/');
-    const publicId = folderAndFile.replace(/\.[^/.]+$/, '');
-    await cloudinary.uploader.destroy(publicId);
-  } catch (err) {
-    console.error('Cloudinary delete error:', err.message);
-  }
-};
+const { saveUploadedImage, deleteStoredImage } = require('../utils/imageStorage');
 
 // GET /api/categories
 const getAllCategories = async (req, res) => {
@@ -66,7 +37,7 @@ const createCategory = async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      imageUrl = await streamUpload(req.file.buffer, 'ecommerce/categories');
+      imageUrl = await saveUploadedImage(req.file, 'ecommerce/categories');
     }
 
     const category = await prisma.category.create({
@@ -93,8 +64,8 @@ const updateCategory = async (req, res) => {
 
     let imageUrl = existing.image;
     if (req.file) {
-      await deleteFromCloudinary(existing.image);
-      imageUrl = await streamUpload(req.file.buffer, 'ecommerce/categories');
+      await deleteStoredImage(existing.image);
+      imageUrl = await saveUploadedImage(req.file, 'ecommerce/categories');
     }
 
     const updated = await prisma.category.update({
@@ -127,7 +98,7 @@ const deleteCategory = async (req, res) => {
       });
     }
 
-    await deleteFromCloudinary(existing.image);
+    await deleteStoredImage(existing.image);
     await prisma.category.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ message: 'Category deleted' });
   } catch (error) {

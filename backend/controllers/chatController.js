@@ -36,9 +36,9 @@ const chatWithAgent = async (req, res) => {
       }
     });
 
-    let catalogContext = 'Current Catalog:\\n';
+    let catalogContext = 'Current Catalog:\n';
     products.forEach(p => {
-      catalogContext += `- ${p.name} (${p.category?.name}): ₹${p.price}. ${p.description ? p.description.substring(0, 50) : ''}...\\n`;
+      catalogContext += `- ${p.name} (${p.category?.name}): ₹${p.price}. ${p.description ? p.description.substring(0, 50) : ''}...\n`;
     });
 
     const systemInstruction = `You are "LuxeStore Agent", a helpful, friendly, and professional AI customer support assistant exclusively for LuxeStore, an e-commerce platform.
@@ -84,7 +84,8 @@ STRICT GUARDRAILS:
     res.json({ reply: response.text });
   } catch (error) {
     console.error("Chatbot Error:", error);
-    res.status(500).json({ message: 'Failed to communicate with AI agent', error: error.message, stack: error.stack });
+    // Never hand a stack trace to the browser.
+    res.status(500).json({ message: 'Failed to communicate with AI agent' });
   }
 };
 

@@ -1,5 +1,10 @@
 const Razorpay = require('razorpay');
 
+// Razorpay only accepts an integer number of paise. `rupees * 100` on a value
+// like 1178.82 yields 117881.99999999999 in floating point, which the API
+// rejects outright — so every amount goes through here.
+const toPaise = (amountInRupees) => Math.round(parseFloat(amountInRupees) * 100);
+
 let razorpay;
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   razorpay = new Razorpay({
@@ -19,7 +24,7 @@ const generatePaymentLink = async (amountInRupees, referenceId, description, cal
 
   try {
     const payload = {
-      amount: amountInRupees * 100, // in paise
+      amount: toPaise(amountInRupees), // in paise
       currency: "INR",
       reference_id: referenceId,
       description: description,
@@ -49,14 +54,14 @@ const createOrder = async (amountInRupees, receiptId) => {
   if (!razorpay) {
     return {
       id: `order_mock_${Date.now()}`,
-      amount: amountInRupees * 100,
+      amount: toPaise(amountInRupees),
       currency: "INR",
       receipt: receiptId
     };
   }
   try {
     const options = {
-      amount: amountInRupees * 100,
+      amount: toPaise(amountInRupees),
       currency: "INR",
       receipt: receiptId,
     };

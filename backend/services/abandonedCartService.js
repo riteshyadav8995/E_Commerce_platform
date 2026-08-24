@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const prisma = require('../utils/prisma');
 const { sendWhatsAppMessage } = require('./whatsappService');
+const { frontendUrl } = require('../utils/appUrls');
 
 /**
  * Initializes cron jobs for Abandoned Cart Recovery
@@ -49,7 +50,7 @@ const initAbandonedCartCron = () => {
 
         // Send WhatsApp Message (Reminder 1)
         if (cart.customer.phone) {
-          const message = `Hi ${cart.customer.name || 'there'},\n\nYour cart is waiting 🛒\n\nYou left some items in your cart. Complete your purchase now:\nhttp://localhost:5173/store\n\nOr reply "Cart" to view your items.`;
+          const message = `Hi ${cart.customer.name || 'there'},\n\nYour cart is waiting 🛒\n\nYou left some items in your cart. Complete your purchase now:\n${frontendUrl()}/store\n\nOr reply "Cart" to view your items.`;
           await sendWhatsAppMessage(cart.customer.phone, message);
           console.log(`[Cron] Sent 30-min reminder to ${cart.customer.phone}`);
         }
@@ -72,7 +73,7 @@ const initAbandonedCartCron = () => {
       for (const abandoned of abandonedCarts) {
         // Send WhatsApp Message (Reminder 2)
         if (abandoned.customer.phone) {
-          const message = `Hi ${abandoned.customer.name || 'there'},\n\nWe noticed you still have items in your cart. 🛒\n\nGet 10% OFF your entire order!\nUse Code: *SAVE10*\n\nComplete your purchase:\nhttp://localhost:5173/store\n\nOr reply "Cart" to view your items.`;
+          const message = `Hi ${abandoned.customer.name || 'there'},\n\nWe noticed you still have items in your cart. 🛒\n\nGet 10% OFF your entire order!\nUse Code: *SAVE10*\n\nComplete your purchase:\n${frontendUrl()}/store\n\nOr reply "Cart" to view your items.`;
           await sendWhatsAppMessage(abandoned.customer.phone, message);
           
           // Mark 2nd reminder as sent

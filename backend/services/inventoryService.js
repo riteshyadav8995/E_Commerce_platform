@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { sendEmail } = require('./emailService');
+const { frontendUrl } = require('../utils/appUrls');
 
 const checkAndNotifyLowStock = async (inventoryId) => {
   try {
@@ -31,7 +32,7 @@ const checkAndNotifyLowStock = async (inventoryId) => {
           to: adminEmail,
           subject: title,
           text: message,
-          html: `<p><strong>${title}</strong></p><p>${message}</p><p><a href="http://localhost:5173/inventory">Click here to manage inventory</a></p>`
+          html: `<p><strong>${title}</strong></p><p>${message}</p><p><a href="${frontendUrl()}/inventory">Click here to manage inventory</a></p>`
         });
       }
     }

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prisma');
+const { getJwtSecret } = require('../utils/jwtSecret');
 
 const authenticate = async (req, res, next) => {
   let token;
@@ -7,7 +8,7 @@ const authenticate = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+      const decoded = jwt.verify(token, getJwtSecret());
       
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
@@ -35,7 +36,7 @@ const authenticate = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role.name)) {
+    if (!req.user || !roles.includes(req.user.role?.name)) {
       return res.status(403).json({ message: 'Not authorized for this role' });
     }
     next();

@@ -1,6 +1,7 @@
 const prisma = require('../utils/prisma');
 const { sendWhatsAppMessage } = require('../services/whatsappService');
 const { generatePaymentLink } = require('../services/razorpayService');
+const { withBillNumber } = require('../utils/billNumber');
 
 // Verify webhook (GET /api/whatsapp/webhook)
 const verifyWebhook = (req, res) => {
@@ -9,17 +10,11 @@ const verifyWebhook = (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode && token === verifyToken) {
+  if (mode === 'subscribe' && token === verifyToken) {
     return res.status(200).send(challenge);
   }
   res.sendStatus(403);
 };
-
-// Generate sequential bill number
-async function generateBillNumber() {
-  const count = await prisma.bill.count();
-  return `BILL-${String(count + 1).padStart(6, '0')}`;
-}
 
 // Receive messages (POST /api/whatsapp/webhook)
 const handleIncomingMessage = async (req, res) => {
@@ -132,7 +127,9 @@ const handleIncomingMessage = async (req, res) => {
               return;
             }
 
-            // Calculate totals
+            // Calculate totals, rounded to paise so the stored Decimal(10,2)
+            // and the amount sent to the gateway agree.
+            const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
             let totalAmount = 0;
             let taxAmount = 0;
             const billItemsData = [];
@@ -140,9 +137,9 @@ const handleIncomingMessage = async (req, res) => {
             for (const item of cart.items) {
               const unitPrice = parseFloat(item.product.price);
               const qty = parseInt(item.quantity);
-              const subtotal = unitPrice * qty;
-              totalAmount += subtotal;
-              taxAmount += subtotal * (parseFloat(item.product.tax) / 100);
+              const subtotal = round2(unitPrice * qty);
+              totalAmount = round2(totalAmount + subtotal);
+              taxAmount = round2(taxAmount + subtotal * (parseFloat(item.product.tax) / 100));
               billItemsData.push({
                 productId: item.productId,
                 quantity: qty,
@@ -151,12 +148,17 @@ const handleIncomingMessage = async (req, res) => {
               });
             }
 
-            const grandTotal = totalAmount + taxAmount;
-            const billNumber = await generateBillNumber();
+            const grandTotal = round2(totalAmount + taxAmount);
 
-            // Transaction: Create Bill -> Reduce Stock -> Generate Link -> Clear Cart
+            // Transaction: Create Bill -> Clear Cart -> Generate Link
+            //
+            // Stock is deliberately NOT deducted here. This order is created
+            // PENDING and its stock comes out when the payment is confirmed,
+            // exactly like the web "pay by link" flow. Deducting here as well
+            // meant every WhatsApp order was subtracted from inventory twice.
             try {
-              const result = await prisma.$transaction(async (tx) => {
+              const result = await withBillNumber((billNumber) =>
+                prisma.$transaction(async (tx) => {
                 const bill = await tx.bill.create({
                   data: {
                     billNumber,
@@ -172,22 +174,12 @@ const handleIncomingMessage = async (req, res) => {
                   }
                 });
 
-                // Reduce inventory
-                for (const item of cart.items) {
-                  const inv = item.product.inventories[0];
-                  if (inv) {
-                    await tx.inventory.update({
-                      where: { id: inv.id },
-                      data: { quantity: { decrement: item.quantity } }
-                    });
-                  }
-                }
-
                 // Clear cart
                 await tx.cart.delete({ where: { id: cart.id } });
 
                 return bill;
-              });
+                })
+              );
 
               // Generate Razorpay Link
               const paymentLink = await generatePaymentLink(

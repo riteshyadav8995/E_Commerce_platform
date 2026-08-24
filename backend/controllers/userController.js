@@ -29,7 +29,12 @@ const getUsers = async (req, res) => {
 // POST /api/users
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, roleName } = req.body;
+    const { name, password, roleName } = req.body;
+    // Same normalisation the auth controller applies, so a staff account
+    // created as "Foo@Bar.com" is still found when they sign in as "foo@bar.com".
+    const email = typeof req.body.email === 'string'
+      ? req.body.email.trim().replace(/\s+/g, '').toLowerCase()
+      : '';
 
     if (!name || !email || !password || !roleName) {
       return res.status(400).json({ message: 'Please add all fields' });
@@ -54,6 +59,9 @@ const createUser = async (req, res) => {
         email,
         passwordHash: hashedPassword,
         roleId: role.id,
+        // Staff accounts never go through the customer OTP flow. Without this
+        // they were created unverified and then rejected at login.
+        isEmailVerified: true,
       },
       select: {
         id: true,
@@ -77,8 +85,10 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const { name, phone, address } = req.body;
 
-    // Ensure the user is updating their own profile, or is an admin
-    if (req.user.id !== parseInt(id) && req.user.role !== 'Admin') {
+    // Ensure the user is updating their own profile, or is an admin.
+    // `req.user.role` is the related Role record, so comparing it to the
+    // string 'Admin' was always true and admins could never edit anyone.
+    if (req.user.id !== parseInt(id) && req.user.role?.name !== 'Admin') {
       return res.status(403).json({ message: 'Forbidden' });
     }
 

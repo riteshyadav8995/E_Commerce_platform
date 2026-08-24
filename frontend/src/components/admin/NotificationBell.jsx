@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 
 const NotificationBell = () => {
@@ -16,9 +16,7 @@ const NotificationBell = () => {
   const fetchNotifications = async () => {
     if (!token) return;
     try {
-      const res = await axios.get('http://localhost:5000/api/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/notifications');
       setNotifications(res.data);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
@@ -48,9 +46,7 @@ const NotificationBell = () => {
     setSelectedNotif(notif);
     if (!notif.isRead) {
       try {
-        await axios.put(`http://localhost:5000/api/notifications/${notif.id}/read`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/notifications/${notif.id}/read`);
         setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
       } catch (error) {
         console.error('Failed to mark as read', error);

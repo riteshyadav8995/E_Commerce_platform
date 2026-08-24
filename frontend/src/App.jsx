@@ -37,10 +37,15 @@ import ScrollToTop from './components/ScrollToTop';
 import DeliveryLayout from './layouts/DeliveryLayout';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 
+// Back-office roles. This used to allow anyone who was not a Customer, which
+// let a delivery account into the admin dashboard, inventory and reports.
+const STAFF_ROLES = ['Admin', 'Manager', 'Cashier'];
+
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role === 'Customer') return <Navigate to="/store" replace />;
+  if (user?.role === 'DeliveryBoy') return <Navigate to="/delivery" replace />;
+  if (!STAFF_ROLES.includes(user?.role)) return <Navigate to="/store" replace />;
   return children;
 };
 

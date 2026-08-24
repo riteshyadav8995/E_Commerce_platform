@@ -1,11 +1,17 @@
-// Restarting server to load new Prisma Client... again
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prisma');
 const { sendEmail } = require('../services/emailService');
+const { getJwtSecret } = require('../utils/jwtSecret');
+
+// Emails are stored lower-cased and space-free. Every lookup has to apply the
+// same transform, otherwise an address typed as "Foo@Gmail.com" is a different
+// row from the one registration created and OTP/login silently stop matching.
+const normalizeEmail = (email) =>
+  typeof email === 'string' ? email.trim().replace(/\s+/g, '').toLowerCase() : '';
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+  return jwt.sign({ id }, getJwtSecret(), {
     expiresIn: '30d',
   });
 };
@@ -18,8 +24,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Please add all required fields (name, email, password, phone)' });
     }
 
-    // Sanitize email: remove spaces, lowercase
-    email = email.trim().replace(/\s+/g, '').toLowerCase();
+    email = normalizeEmail(email);
 
     // Validate phone: 10 digits, numbers only
     if (!/^\d{10}$/.test(phone)) {
@@ -91,7 +96,8 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -135,7 +141,7 @@ const logoutUser = async (req, res) => {
 
 const sendOtp = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body.email);
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       return res.status(400).json({ message: 'Valid email address is required' });
     }
@@ -172,7 +178,8 @@ const sendOtp = async (req, res) => {
 
 const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { otp } = req.body;
+    const email = normalizeEmail(req.body.email);
     if (!email || !otp) {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }

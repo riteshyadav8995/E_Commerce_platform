@@ -17,7 +17,8 @@ async function main() {
         name: 'Raju Delivery',
         email,
         passwordHash: await bcrypt.hash('password123', 10),
-        roleId: role.id
+        roleId: role.id,
+        isEmailVerified: true
       }
     });
     console.log('Created Delivery Boy User:', user.email);
